@@ -1,0 +1,114 @@
+
+#include "stm8s.h"
+#include "milis.h"
+#include "swspi.h"
+
+uint16_t sekundy=0; 
+uint16_t desitky=0;
+uint16_t minuty=0;
+uint16_t desmin=0;
+uint16_t time=0;
+
+uint8_t stoji=0;
+uint8_t jede=1;
+uint8_t stav=0;
+
+
+void proces_stopky(void);
+void zaklad(void);
+
+
+void main(void){
+CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1); // 16MHz z interního RC oscilátoru
+init_milis(); 
+
+stav=stoji;
+
+swspi_init();
+		swspi_tx16(0x0c<<8 | 0b00000001); 	//shut down
+		swspi_tx16(0x0b<<8 | 0b00000111);		//scan limit
+		swspi_tx16(0x09<<8 | 0b11111111);		//decode mode
+		swspi_tx16(0x0a<<8 | 0b00000011); 	//jas
+		
+
+zaklad();
+
+while (1){
+		proces_stopky();
+	}
+}
+
+
+
+void proces_stopky(void){
+	if(stav==jede){						//start
+			
+		
+		if ((milis()-time)>=1000){
+			sekundy++;
+			if(sekundy>9){
+				sekundy=0;
+				desitky++;
+				if(desitky>5){
+					desitky=0;
+					minuty++;
+					if(minuty>9){
+						minuty=0;
+						desmin++;
+					}	
+				}
+			}
+ 
+			swspi_init();
+				swspi_tx16(0x01<<8 | sekundy);
+				swspi_tx16(0x02<<8 | desitky);
+				swspi_tx16(0x03<<8 | minuty | 0b10000000);
+				swspi_tx16(0x04<<8 | desmin);
+			
+			time=milis();	
+		}
+			
+		
+	}
+  }
+
+
+
+void zaklad(void){
+	stav=stoji;
+	swspi_init();
+		swspi_tx16(0x01<<8 | 0);
+		swspi_tx16(0x02<<8 | 0);
+		swspi_tx16(0x03<<8 | 0);
+		swspi_tx16(0x04<<8 | 0);
+		swspi_tx16(0x05<<8 | 0);
+		swspi_tx16(0x06<<8 | 0);
+		swspi_tx16(0x07<<8 | 0);
+		swspi_tx16(0x08<<8 | 0);
+		swspi_tx16(0x03<<8 | 0b10000000);		//tečka
+		swspi_tx16(0x07<<8 | 0b10000000);
+}
+
+
+
+// pod tímto komentářem nic neměňte 
+#ifdef USE_FULL_ASSERT
+
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *   where the assert_param error has occurred.
+  * @param file: pointer to the source file name
+  * @param line: assert_param error line source number
+  * @retval : None
+  */
+void assert_failed(u8* file, u32 line)
+{ 
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+
+  /* Infinite loop */
+  while (1)
+  {
+  }
+}
+#endif
